@@ -54,6 +54,12 @@
       loop_control:
         loop_var: role
       when: node_custom_roles_post_sysprep != ""
+    - ansible.builtin.include_role:
+        name: node_agent
+    - ansible.builtin.include_role:
+        name: bootstrapper
+    - ansible.builtin.include_role:
+        name: antrea
 
   environment:
     http_proxy: "{{ http_proxy | default('') }}"
