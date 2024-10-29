@@ -1,0 +1,36 @@
+---
+- name: download antrea agent image
+  get_url:
+    url: "http://10.84.95.163/images/artifacts/antrea-agent.tar"
+    dest: "/tmp/antrea-agent.tar"
+
+- name: load antrea agent image
+  become: true
+  shell: ctr -n k8s.io image import /tmp/antrea-agent.tar
+
+- name: download antrea controller image
+  get_url:
+    url: "http://10.84.95.163/images/artifacts/antrea-controller.tar"
+    dest: "/tmp/antrea-controller.tar"
+
+- name: load antrea controller image
+  become: true
+  shell: ctr -n k8s.io image import /tmp/antrea-controller.tar
+
+- name: make sure packages folder exist
+  become: true
+  ansible.builtin.file:
+    path: /var/vcap/packages/antrea
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: download antrea manifest
+  get_url:
+    # url: "https://raw.githubusercontent.com/antrea-io/antrea/main/build/yamls/antrea.yml"
+    url: "http://10.84.95.163/images/artifacts/antrea.yml"
+    dest: "/var/vcap/packages/antrea/antrea.yml"
+    owner: root
+    group: root
+    mode: '0755'
