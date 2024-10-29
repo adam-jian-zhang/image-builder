@@ -1,0 +1,42 @@
+---
+- name: download antrea agent image
+  get_url:
+    url: "http://10.84.95.163/images/artifacts/node_agent.tar.gz"
+    dest: "/tmp/node_agent.tar.gz"
+
+- name: make sure packages folder exist
+  become: true
+  ansible.builtin.file:
+    path: /var/vcap/packages
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Extract node_agent
+  become: true
+  ansible.builtin.unarchive:
+    src: "/tmp/node_agent.tar.gz"
+    dest: /var/vcap/packages/
+    owner: 'root'
+    group: 'root'
+    remote_src: yes
+
+- name: delete tmp tar file
+  become: true
+  ansible.builtin.file:
+    path: "/tmp/node_agent.tar.gz"
+    state: absent
+
+- name: replace cookie
+  ansible.builtin.template:
+    src:  COOKIE
+    dest: /var/vcap/packages/node_agent/releases/COOKIE
+    owner: 'root'
+    group: 'root'
+    mode: '0600'
+
+# - name: start node_agent
+#   become: true
+#   # shell: RELEASE_COOKIE={{ cookie }} /var/vcap/packages/node_agent/bin/node_agent daemon
+#   # shell: /var/vcap/packages/node_agent/bin/node_agent daemon
