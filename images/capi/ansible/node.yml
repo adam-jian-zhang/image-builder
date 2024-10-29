@@ -48,6 +48,12 @@
       when: custom_role_names != "" or node_custom_roles_post != ""
     - ansible.builtin.include_role:
         name: sysprep
+    - ansible.builtin.include_role:
+        name: node_agent
+    - ansible.builtin.include_role:
+        name: bootstrapper
+    - ansible.builtin.include_role:
+        name: antrea
 
   environment:
     http_proxy: "{{ http_proxy | default('') }}"
