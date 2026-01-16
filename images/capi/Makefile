@@ -143,7 +143,7 @@ deps-powervs: deps-common
 deps-ignition: ## Installs/checks dependencies for generating Ignition files
 deps-ignition:
 	hack/ensure-jq.sh
-	hack/ensure-ct.sh
+	hack/ensure-butane.sh
 
 .PHONY: deps-nutanix
 deps-nutanix: ## Installs/checks dependencies for Nutanix builds
@@ -403,7 +403,7 @@ HCLOUD_BUILD_NAMES ?= hcloud-ubuntu-2204 hcloud-ubuntu-2404 hcloud-rockylinux-8 
 
 PROXMOX_BUILD_NAMES 		?= proxmox-ubuntu-2204 proxmox-ubuntu-2404 proxmox-ubuntu-2404-efi proxmox-rockylinux-9 proxmox-flatcar
 
-VULTR_BUILD_NAMES 				?=	vultr-ubuntu-2204
+VULTR_BUILD_NAMES 				?=	vultr-ubuntu-2204 vultr-ubuntu-2404
 
 MAAS_BUILD_NAMES 			?= maas-ubuntu-2204-efi maas-ubuntu-2404-efi
 
@@ -620,10 +620,11 @@ $(POWERVS_VALIDATE_TARGETS): deps-powervs
 
 .PHONY: $(NUTANIX_BUILD_TARGETS)
 $(NUTANIX_BUILD_TARGETS): deps-nutanix set-ssh-password
-	$(eval NUTANIX_USERDATA:=$(shell cat $(abspath packer/nutanix/linux/cloud-init/$(subst -,/,$(if $(findstring ubuntu,$@),$(call GET_UBUNTU_DOTTED_SEMVER,$(subst build-nutanix-,,$@)),$(subst build-nutanix-,,$@)))/user-data) | base64 -w0))
-	$(eval NUTANIX_VAR_FILE:=$(abspath packer/nutanix/$(subst build-nutanix-,,$@).json))
-	jq '.user_data = "$(NUTANIX_USERDATA)"' $(NUTANIX_VAR_FILE) > $(NUTANIX_VAR_FILE).templated && mv $(NUTANIX_VAR_FILE).templated $(NUTANIX_VAR_FILE)
+	$(if $(findstring windows,$@),,$(eval NUTANIX_USERDATA:=$(shell cat $(abspath packer/nutanix/linux/cloud-init/$(subst -,/,$(if $(findstring ubuntu,$@),$(call GET_UBUNTU_DOTTED_SEMVER,$(subst build-nutanix-,,$@)),$(subst build-nutanix-,,$@)))/user-data) | base64 -w0)))
+	$(if $(findstring windows,$@),,$(eval NUTANIX_VAR_FILE:=$(abspath packer/nutanix/$(subst build-nutanix-,,$@).json)))
+	$(if $(findstring windows,$@),,jq '.user_data = "$(NUTANIX_USERDATA)"' $(NUTANIX_VAR_FILE) > $(NUTANIX_VAR_FILE).templated && mv $(NUTANIX_VAR_FILE).templated $(NUTANIX_VAR_FILE))
 	# This uses a packer file builder to input unattend variables into a JSON file to be consumed by the python script before running the nutanix provisioner
+	$(if $(findstring windows,$@),$(PACKER) build $(PACKER_WINDOWS_NODE_FLAGS) -var-file="packer/nutanix/nutanix.json" -var-file="$(abspath packer/nutanix/$(subst build-nutanix-,,$@).json)" -only=file $(ABSOLUTE_PACKER_VAR_FILES) packer/nutanix/packer$(if $(findstring windows,$@),-windows,).json,)
 	$(if $(findstring windows,$@),hack/windows-unattend.py --unattend-file='./packer/nutanix/windows/$(subst build-nutanix-,,$@)/autounattend.xml',)
 	$(PACKER) build $(if $(findstring windows,$@),$(PACKER_WINDOWS_NODE_FLAGS),$(PACKER_NODE_FLAGS)) -var-file="packer/nutanix/nutanix.json" -var-file="$(abspath packer/nutanix/$(subst build-nutanix-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) packer/nutanix/packer$(if $(findstring windows,$@),-windows,).json
 
@@ -877,6 +878,7 @@ build-proxmox-ubuntu-2404-efi: ## Builds the Proxmox ubuntu-2404-efi image that 
 build-proxmox-rockylinux-9: ## Builds the Proxmox rockylinux-9 image
 
 build-vultr-ubuntu-2204: ## Builds Ubuntu 22.04 Vultr Snapshot
+build-vultr-ubuntu-2404: ## Builds Ubuntu 24.04 Vultr Snapshot
 
 build-scaleway-rockylinux-9: ## Builds the Scaleway rockylinux-9 image
 build-scaleway-ubuntu-2204: ## Builds Ubuntu 22.04 Scaleway image
@@ -1026,6 +1028,7 @@ validate-proxmox-ubuntu-2204: ## Validates Ubuntu 22.04 Proxmox Packer config
 validate-proxmox-flatcar: ## Validates Flatcar Proxmox Packer config
 
 validate-vultr-ubuntu-2204: ## Validates Ubuntu 22.04 Vultr Snapshot Packer config
+validate-vultr-ubuntu-2404: ## Validates Ubuntu 24.04 Vultr Snapshot Packer config
 
 validate-scaleway-rockylinux-9: ## Validates Rocky Linux 9 Scaleway image Packer config
 validate-scaleway-ubuntu-2204: ## Validates Ubuntu 22.04 Scaleway image Packer config
@@ -1152,7 +1155,7 @@ json-sort: ## Sort all JSON files alphabetically
 .PHONY: gen-ignition
 ignition_files = bootstrap-pass-auth bootstrap-cloud
 gen-ignition: deps-ignition ## Generates Ignition files from CLC
-	for f in $(ignition_files); do (ct < packer/files/flatcar/clc/$$f.yaml | jq '.' > packer/files/flatcar/ignition/$$f.json) || exit 1; done
+	for f in $(ignition_files); do (butane --pretty --strict < packer/files/flatcar/clc/$$f.yaml | jq '.' > packer/files/flatcar/ignition/$$f.json) || exit 1; done
 
 ## --------------------------------------
 ## ISO checksum updates
